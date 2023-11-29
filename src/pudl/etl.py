@@ -51,17 +51,19 @@ def _validate_params_partition(etl_params_og, tables):
 
 def check_for_bad_years(try_years, dataset):
     """Check for bad data years."""
-    bad_years = [
-        y for y in try_years
-        if y not in pc.working_partitions[dataset]['years']]
-    if bad_years:
+    if bad_years := [
+        y
+        for y in try_years
+        if y not in pc.working_partitions[dataset]['years']
+    ]:
         raise AssertionError(f"Unrecognized {dataset} years: {bad_years}")
 
 
 def check_for_bad_tables(try_tables, dataset):
     """Check for bad data tables."""
-    bad_tables = [t for t in try_tables if t not in pc.pudl_tables[dataset]]
-    if bad_tables:
+    if bad_tables := [
+        t for t in try_tables if t not in pc.pudl_tables[dataset]
+    ]:
         raise AssertionError(f"Unrecognized {dataset} table: {bad_tables}")
 
 ###############################################################################
@@ -72,10 +74,7 @@ def check_for_bad_tables(try_tables, dataset):
 def _validate_params_eia(etl_params):
     # extract all of the etl_params for the EIA ETL function
     # empty dictionary to compile etl_params
-    eia_input_dict = {}
-    # when nothing is set in the settings file, the years will default as none
-    eia_input_dict['eia860_years'] = etl_params.get('eia860_years', [])
-
+    eia_input_dict = {'eia860_years': etl_params.get('eia860_years', [])}
     # the tables will default to all of the tables if nothing is given
     eia_input_dict['eia860_tables'] = etl_params.get(
         'eia860_tables', pc.pudl_tables['eia860'])
@@ -268,10 +267,7 @@ def _etl_eia(etl_params, datapkg_dir, pudl_settings, ds_kwargs):
 # FERC1 EXPORT FUNCTIONS
 ###############################################################################
 def _validate_params_ferc1(etl_params):
-    ferc1_dict = {}
-    # pull out the etl_params from the dictionary passed into this function
-    ferc1_dict['ferc1_years'] = etl_params.get('ferc1_years', [None])
-
+    ferc1_dict = {'ferc1_years': etl_params.get('ferc1_years', [None])}
     # the tables will default to all of the tables if nothing is given
     ferc1_dict['ferc1_tables'] = etl_params.get(
         'ferc1_tables', pc.pudl_tables['ferc1'])
@@ -282,10 +278,7 @@ def _validate_params_ferc1(etl_params):
         check_for_bad_tables(
             try_tables=ferc1_dict['ferc1_tables'], dataset='ferc1')
 
-    if not ferc1_dict['ferc1_years']:
-        return {}
-    else:
-        return ferc1_dict
+    return {} if not ferc1_dict['ferc1_years'] else ferc1_dict
 
 
 def _load_static_tables_ferc1(datapkg_dir):
@@ -482,9 +475,7 @@ def _validate_params_epaipm(etl_params):
         epaipm_dict['epaipm_tables'] = etl_params['epaipm_tables']
     except KeyError:
         epaipm_dict['epaipm_tables'] = []
-    if not epaipm_dict['epaipm_tables']:
-        return {}
-    return epaipm_dict
+    return {} if not epaipm_dict['epaipm_tables'] else epaipm_dict
 
 
 def _load_static_tables_epaipm(datapkg_dir):
@@ -570,10 +561,7 @@ def _validate_params_glue(etl_params):
         glue_dict['eia'] = etl_params['eia']
     except KeyError:
         glue_dict['eia'] = False
-    if not glue_dict['ferc1'] and not glue_dict['eia']:
-        return {}
-    else:
-        return(glue_dict)
+    return {} if not glue_dict['ferc1'] and not glue_dict['eia'] else glue_dict
 
 
 def _etl_glue(etl_params, datapkg_dir, pudl_settings, ds_kwargs):
@@ -634,12 +622,11 @@ def _insert_glue_settings(dataset_dicts):
         for dataset_input in dataset_dicts:
             for dataset in dataset_input:
                 if dataset in datasets_w_glue:
-                    if dataset == 'ferc1':
-                        glue_param['ferc1'] = True
                     if dataset == 'eia':
                         glue_param['eia'] = True
-        validated_glue_params = _validate_params_glue(glue_param)
-        if validated_glue_params:
+                    elif dataset == 'ferc1':
+                        glue_param['ferc1'] = True
+        if validated_glue_params := _validate_params_glue(glue_param):
             dataset_dicts.extend([{'glue': validated_glue_params}])
     return dataset_dicts
 
@@ -659,7 +646,7 @@ def _add_missing_parameters(flattened_params_dict):
     return flattened_params_dict
 
 
-def get_flattened_etl_parameters(datapkg_bundle_settings):  # noqa: C901
+def get_flattened_etl_parameters(datapkg_bundle_settings):    # noqa: C901
     """
     Compile flattened etl parameters.
 
@@ -683,27 +670,27 @@ def get_flattened_etl_parameters(datapkg_bundle_settings):  # noqa: C901
     flattened_parameters = []
     for datapkg in datapkg_bundle_settings:
         for settings_dataset_dict in datapkg['datasets']:
-            for dataset in settings_dataset_dict:
-                if settings_dataset_dict[dataset]:
-                    flattened_parameters.append(settings_dataset_dict[dataset])
+            flattened_parameters.extend(
+                settings_dataset_dict[dataset]
+                for dataset in settings_dataset_dict
+                if settings_dataset_dict[dataset]
+            )
     flattened_params_dict = {}
     for dataset in flattened_parameters:
         for param in dataset:
             try:
                 _ = flattened_params_dict[param]
                 logger.debug(f'{param} is already present present')
-                if flattened_params_dict[param] is True or False:
-                    if flattened_params_dict[param] or dataset[param] is True:
-                        flattened_params_dict[param] = True
-                    else:
-                        flattened_params_dict[param] = False
+                if flattened_params_dict[param] is True:
+                    flattened_params_dict[param] = bool(
+                        flattened_params_dict[param] or dataset[param] is True
+                    )
                 elif isinstance(flattened_params_dict[param], list):
                     flattened_params_dict[param] = set(
                         flattened_params_dict[param] + dataset[param])
             except KeyError:
                 flattened_params_dict[param] = dataset[param]
-    flattened_params_dict = _add_missing_parameters(flattened_params_dict)
-    return flattened_params_dict
+    return _add_missing_parameters(flattened_params_dict)
 
 
 def validate_params(datapkg_bundle_settings, pudl_settings):
@@ -769,8 +756,7 @@ def validate_params(datapkg_bundle_settings, pudl_settings):
                 validated_dataset_dict = {dataset: etl_params}
                 if etl_params:
                     dataset_dicts.extend([validated_dataset_dict])
-        dataset_dicts = _insert_glue_settings(dataset_dicts)
-        if dataset_dicts:
+        if dataset_dicts := _insert_glue_settings(dataset_dicts):
             validated_datapkg_settings['datasets'] = dataset_dicts
             validated_settings.extend([validated_datapkg_settings])
     return validated_settings
@@ -813,10 +799,9 @@ def etl(datapkg_settings, output_dir, pudl_settings, ds_kwargs):
     }
     for dataset_dict in datapkg_settings['datasets']:
         for dataset in dataset_dict:
-            new_tables = etl_funcs[dataset](
-                dataset_dict[dataset], output_dir, pudl_settings,
-                ds_kwargs)
-            if new_tables:
+            if new_tables := etl_funcs[dataset](
+                dataset_dict[dataset], output_dir, pudl_settings, ds_kwargs
+            ):
                 processed_tables.extend(new_tables)
     return processed_tables
 
@@ -890,12 +875,9 @@ def generate_datapkg_bundle(datapkg_bundle_settings,
 
         # Create the datapackge directory, and its data subdir:
         (output_dir / "data").mkdir(parents=True)
-        # run the ETL functions for this pkg and return the list of tables
-        # output to CSVs:
-        datapkg_resources = etl(datapkg_settings, output_dir, pudl_settings,
-                                ds_kwargs)
-
-        if datapkg_resources:
+        if datapkg_resources := etl(
+            datapkg_settings, output_dir, pudl_settings, ds_kwargs
+        ):
             descriptor = pudl.load.metadata.generate_metadata(
                 datapkg_settings,
                 datapkg_resources,

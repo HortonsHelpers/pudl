@@ -103,17 +103,16 @@ def test_plant_id_clash(pudl_out_ferc1):
     assertion and fail if it is untrue (as... we know it is right now).
     """
     steam_df = pudl_out_ferc1.plants_steam_ferc1()
-    bad_plant_ids_ferc1 = (
-        steam_df[['plant_id_pudl', 'plant_id_ferc1']].
-        drop_duplicates().
-        groupby('plant_id_ferc1').
-        count().
-        rename(columns={'plant_id_pudl': 'pudl_id_count'}).
-        query('pudl_id_count>1').
-        reset_index().
-        plant_id_ferc1.values.tolist()
-    )
-    if bad_plant_ids_ferc1:
+    if bad_plant_ids_ferc1 := (
+        steam_df[['plant_id_pudl', 'plant_id_ferc1']]
+        .drop_duplicates()
+        .groupby('plant_id_ferc1')
+        .count()
+        .rename(columns={'plant_id_pudl': 'pudl_id_count'})
+        .query('pudl_id_count>1')
+        .reset_index()
+        .plant_id_ferc1.values.tolist()
+    ):
         bad_records = steam_df[steam_df.plant_id_ferc1.
                                isin(bad_plant_ids_ferc1)]
         bad_plant_ids_pudl = bad_records.plant_id_pudl.unique().tolist()

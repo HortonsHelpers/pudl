@@ -319,7 +319,7 @@ def merge_on_date_year(df_date, df_year, on=(), how='inner',
 
     first_date = pd.to_datetime(df_date[date_col].min())
     all_dates = pd.DatetimeIndex(df_date[date_col]).unique().sort_values()
-    if not len(all_dates) > 0:
+    if len(all_dates) <= 0:
         raise ValueError("Didn't find any dates in DatetimeIndex.")
     if len(all_dates) > 1:
         if len(all_dates) == 2:
@@ -598,12 +598,12 @@ def month_year_to_date(df):
     for base in date_base:
         base_month_regex = f'^{base}{month_regex}'
         month_col = list(df.filter(regex=base_month_regex).columns)
-        if not len(month_col) == 1:
+        if len(month_col) != 1:
             raise AssertionError()
         month_col = month_col[0]
         base_year_regex = f'^{base}{year_regex}'
         year_col = list(df.filter(regex=base_year_regex).columns)
-        if not len(year_col) == 1:
+        if len(year_col) != 1:
             raise AssertionError()
         year_col = year_col[0]
         date_col = f'{base}_date'
@@ -703,16 +703,8 @@ def convert_to_date(df,
 
     year = df[year_col]
 
-    if month_col not in df.columns:
-        month = month_value
-    else:
-        month = df[month_col]
-
-    if day_col not in df.columns:
-        day = day_value
-    else:
-        day = df[day_col]
-
+    month = month_value if month_col not in df.columns else df[month_col]
+    day = day_value if day_col not in df.columns else df[day_col]
     df[date_col] = pd.to_datetime({'year': year,
                                    'month': month,
                                    'day': day})
@@ -1001,10 +993,10 @@ def convert_dfs_dict_dtypes(dfs_dict, data_source):
     column based on the data source specific type map stored in pudl.constants
 
     """
-    cleaned_dfs_dict = {}
-    for name, df in dfs_dict.items():
-        cleaned_dfs_dict[name] = convert_cols_dtypes(df, data_source, name)
-    return cleaned_dfs_dict
+    return {
+        name: convert_cols_dtypes(df, data_source, name)
+        for name, df in dfs_dict.items()
+    }
 
 
 def generate_rolling_avg(df, group_cols, data_col, window, **kwargs):
@@ -1163,14 +1155,16 @@ def zero_pad_zips(zip_series, n_digits):
 
 def iterate_multivalue_dict(**kwargs):
     """Make dicts from dict with main dict key and one value of main dict."""
-    single_valued = {k: v for k,
-                     v in kwargs.items()
-                     if not (isinstance(v, list) or isinstance(v, tuple))}
+    single_valued = {
+        k: v for k, v in kwargs.items() if not (isinstance(v, (list, tuple)))
+    }
 
     # Transform multi-valued {k: vlist} into {k1: [{k1: v1}, {k1: v2}, ...], k2: [...], ...}
-    multi_valued = {k: [{k: v} for v in vlist]
-                    for k, vlist in kwargs.items()
-                    if (isinstance(vlist, list) or isinstance(vlist, tuple))}
+    multi_valued = {
+        k: [{k: v} for v in vlist]
+        for k, vlist in kwargs.items()
+        if isinstance(vlist, (list, tuple))
+    }
 
     for value_assignments in itertools.product(*multi_valued.values()):
         result = dict(single_valued)

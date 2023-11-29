@@ -134,7 +134,9 @@ def csv_dump(df, resource_name, keep_index, datapkg_dir):
 
     """
     args = {
-        "path_or_buf": pathlib.Path(datapkg_dir, "data", resource_name + ".csv"),
+        "path_or_buf": pathlib.Path(
+            datapkg_dir, "data", f"{resource_name}.csv"
+        ),
         "index": keep_index,
     }
 
@@ -146,8 +148,13 @@ def csv_dump(df, resource_name, keep_index, datapkg_dir):
         # See https://github.com/pandas-dev/pandas/issues/28103 for more details.
         args["path_or_buf"] = io.TextIOWrapper(
             gzip.GzipFile(
-                filename=pathlib.Path(datapkg_dir, "data", resource_name + ".csv.gz"),
-                mtime=0, mode='wb'))
+                filename=pathlib.Path(
+                    datapkg_dir, "data", f"{resource_name}.csv.gz"
+                ),
+                mtime=0,
+                mode='wb',
+            )
+        )
         args["date_format"] = '%Y-%m-%dT%H:%M:%SZ'
 
     if keep_index:

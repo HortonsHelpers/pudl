@@ -71,7 +71,6 @@ def get_hifld_planning_areas_gdf(pudl_settings):
         associated data columns.
 
     """
-    hifld_pa_url = "https://opendata.arcgis.com/datasets/7d35521e3b2c48ab8048330e14a4d2d1_0.gdb"
     hifld_dir = pathlib.Path(pudl_settings["data_dir"]) / "local/hifld"
     hifld_dir.mkdir(parents=True, exist_ok=True)
     hifld_pa_zipfile = hifld_dir / "electric_planning_areas.gdb.zip"
@@ -79,6 +78,7 @@ def get_hifld_planning_areas_gdf(pudl_settings):
 
     if not hifld_pa_gdb_dir.is_dir():
         logger.warning("No Planning Area GeoDB found. Downloading from HIFLD.")
+        hifld_pa_url = "https://opendata.arcgis.com/datasets/7d35521e3b2c48ab8048330e14a4d2d1_0.gdb"
         # Download to appropriate location
         pudl.helpers.download_zip_url(hifld_pa_url, hifld_pa_zipfile)
         # Unzip because we can't use zipfile paths with geopandas
@@ -91,7 +91,7 @@ def get_hifld_planning_areas_gdf(pudl_settings):
     else:
         logger.info("We've already got the planning area GeoDB.")
 
-    gdf = (
+    return (
         geopandas.read_file(hifld_pa_gdb_dir)
         .assign(
             SOURCEDATE=lambda x: pd.to_datetime(x.SOURCEDATE),
@@ -100,24 +100,25 @@ def get_hifld_planning_areas_gdf(pudl_settings):
             NAICS_CODE=lambda x: pd.to_numeric(x.NAICS_CODE),
             YEAR=lambda x: pd.to_numeric(x.YEAR),
         )
-        .astype({
-            "ID": pd.Int64Dtype(),
-            "NAME": pd.StringDtype(),
-            "COUNTRY": pd.StringDtype(),
-            "NAICS_CODE": pd.Int64Dtype(),
-            "NAICS_DESC": pd.StringDtype(),
-            "SOURCE": pd.StringDtype(),
-            "VAL_METHOD": pd.StringDtype(),
-            "WEBSITE": pd.StringDtype(),
-            "ABBRV": pd.StringDtype(),
-            "YEAR": pd.Int64Dtype(),
-            "PEAK_LOAD": float,
-            "PEAK_RANGE": float,
-            "SHAPE_Length": float,
-            "SHAPE_Area": float,
-        })
+        .astype(
+            {
+                "ID": pd.Int64Dtype(),
+                "NAME": pd.StringDtype(),
+                "COUNTRY": pd.StringDtype(),
+                "NAICS_CODE": pd.Int64Dtype(),
+                "NAICS_DESC": pd.StringDtype(),
+                "SOURCE": pd.StringDtype(),
+                "VAL_METHOD": pd.StringDtype(),
+                "WEBSITE": pd.StringDtype(),
+                "ABBRV": pd.StringDtype(),
+                "YEAR": pd.Int64Dtype(),
+                "PEAK_LOAD": float,
+                "PEAK_RANGE": float,
+                "SHAPE_Length": float,
+                "SHAPE_Area": float,
+            }
+        )
     )
-    return gdf
 
 
 ################################################################################
@@ -148,16 +149,10 @@ def polygonize_geom(geom):
     """
     if isinstance(geom, GeometryCollection):
 
-        new_list = [a for a in list(geom) if isinstance(
-            a, Polygon) or isinstance(a, MultiPolygon)]
+        new_list = [a for a in list(geom) if isinstance(a, (Polygon, MultiPolygon))]
 
-        if len(new_list) == 1:
-            return new_list[0]
-
-        else:
-            return MultiPolygon(new_list)
-
-    elif isinstance(geom, MultiPolygon) or isinstance(geom, Polygon):
+        return new_list[0] if len(new_list) == 1 else MultiPolygon(new_list)
+    elif isinstance(geom, (MultiPolygon, Polygon)):
         return geom
 
     else:
@@ -579,10 +574,8 @@ def allocate_and_aggregate(disagg_layer,
     # Allowing for single and multiple allocators,
     # aggregating columns and allocatees
     def listify(ele):
-        if isinstance(ele, list):
-            return ele
-        else:
-            return [ele]
+        return ele if isinstance(ele, list) else [ele]
+
     allocators, allocatees, by = tuple(
         map(listify, [allocators, allocatees, by]))
 
@@ -700,24 +693,19 @@ def sales_ratio_by_class_fips(pudl_out):
     )
     sales_by_class.columns = sales_by_class.columns.droplevel()
     total_sales_mwh = sales_by_class.sum(axis="columns")
-    sales_by_class_fips = (
-        sales_by_class
-        .divide(total_sales_mwh, axis="index")
+    return (
+        sales_by_class.divide(total_sales_mwh, axis="index")
         .reset_index()
         .merge(
-            pudl_out.service_territory_eia861()[[
-                "utility_id_eia",
-                "state",
-                "report_date",
-                "county_id_fips"
-            ]]
+            pudl_out.service_territory_eia861()[
+                ["utility_id_eia", "state", "report_date", "county_id_fips"]
+            ]
         )
         .drop(["utility_id_eia", "state"], axis="columns")
         .groupby(["report_date", "county_id_fips"])
         .mean()
         .reset_index()
     )
-    return sales_by_class_fips
 
 
 ################################################################################
@@ -951,9 +939,7 @@ def corr_fig(compare_data, select_regions=None, suptitle="Parity Plot", s=2, top
 
     region_list = compare_data["region"].unique().tolist()
 
-    counter = 0
-
-    for ax in g.axes.flat:
+    for counter, ax in enumerate(g.axes.flat):
 
         df_temp = compare_data[compare_data["region"] == region_list[counter]]
         min_max = df_temp.describe().loc[["min", "max"], [
@@ -970,8 +956,6 @@ def corr_fig(compare_data, select_regions=None, suptitle="Parity Plot", s=2, top
 
         ax.set_ylim(min_lim, max_lim)
         ax.set_xlim(min_lim, max_lim)
-
-        counter += 1
 
     g.fig.suptitle(suptitle)
     # Formula for specifically adjusting the `suptitle`
@@ -1203,10 +1187,9 @@ def vec_error(vec1, vec2, errtype):
         if vec1[mask].size == 0:
             return np.nan
 
-        else:
-            _, _, r_value, _, _ = scipy.stats.linregress(
-                vec1[mask], vec2[mask])
-            return r_value ** 2
+        _, _, r_value, _, _ = scipy.stats.linregress(
+            vec1[mask], vec2[mask])
+        return r_value ** 2
 
 
 def error_heatmap(alloc_df, actual_df, demand_columns, region_col="pca", error_metric="r2", leap_exception=False):

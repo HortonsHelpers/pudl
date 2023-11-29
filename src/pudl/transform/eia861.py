@@ -658,7 +658,7 @@ def _clean_nerc(df, idx_cols):
 
     # Record a list of the reported nerc regions not included in the recognized regions list (these eventually become UNK)
     nerc_col = nerc_df['nerc_region'].tolist()
-    nerc_list = list(set([item for sublist in nerc_col for item in sublist]))
+    nerc_list = list({item for sublist in nerc_col for item in sublist})
     non_nerc_list = [
         nerc_entity for nerc_entity in nerc_list
         if nerc_entity not in pc.RECOGNIZED_NERC_REGIONS + list(NERC_SPELLCHECK.keys())]
@@ -743,18 +743,14 @@ def _compare_nerc_physical_w_nerc_operational(df):
                  how='left')
     )
 
-    # Keep only rows where there are no matches for the whole group.
-    expanded_nerc_match_bools_false = (
-        expanded_nerc_match_bools[~expanded_nerc_match_bools['nerc_group_match']]
-    )
-
-    return expanded_nerc_match_bools_false
+    return expanded_nerc_match_bools[
+        ~expanded_nerc_match_bools['nerc_group_match']
+    ]
 
 
 def _pct_to_mw(df, pct_col):
     """Turn pct col into mw capacity using total capacity col."""
-    mw_value = df['total_capacity_mw'] * df[pct_col] / 100
-    return mw_value
+    return df['total_capacity_mw'] * df[pct_col] / 100
 
 
 def _make_yn_bool(df_object):

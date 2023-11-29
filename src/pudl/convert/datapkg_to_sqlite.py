@@ -135,8 +135,7 @@ def parse_command_line(argv):
         help="""A list of paths to the datapackage.json files containing the
         metadata for the PUDL tabular data packages to be merged and
         potentially loaded into an SQLite database.""")
-    arguments = parser.parse_args(argv[1:])
-    return arguments
+    return parser.parse_args(argv[1:])
 
 
 def main():

@@ -244,21 +244,12 @@ def _compile_all_entity_records(entity, eia_transformed_dfs):
     dfs = []
     # for each df in the dict of transformed dfs
     for table_name, transformed_df in eia_transformed_dfs.items():
-        # inside of main() we are going to be adding items into
-        # eia_transformed_dfs with the name 'annual'. We don't want to harvest
-        # from our newly harvested tables.
         if 'annual' not in table_name:
-            # if the df contains the desired columns the grab those columns
             if set(base_cols).issubset(transformed_df.columns):
                 logger.debug(f"        {table_name}...")
                 # create a copy of the df to muck with
                 df = transformed_df.copy()
-                # we know these columns must be in the dfs
-                cols = []
-                # check whether the columns are in the specific table
-                for column in static_cols + annual_cols:
-                    if column in df.columns:
-                        cols.append(column)
+                cols = [column for column in static_cols + annual_cols if column in df.columns]
                 df = df[(base_cols + cols)]
                 df = df.dropna(subset=entity_id)
                 # add a column with the table name so we know its origin
@@ -437,7 +428,7 @@ def harvesting(entity,  # noqa: C901
         dirty_df = col_df.merge(
             clean_df[clean_df[col].isnull()][entity_id])
 
-        if col in special_case_cols.keys():
+        if col in special_case_cols:
             clean_df = special_case_cols[col][0](
                 dirty_df, clean_df, entity_id_df, entity_id, col,
                 cols_to_consit, special_case_cols[col][1])

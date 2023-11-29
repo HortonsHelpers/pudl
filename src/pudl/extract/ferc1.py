@@ -367,8 +367,7 @@ def get_dbc_map(ds, year, min_length=4):
         dbf_fields = dbfread.DBF(
             "", filedata=dbc, ignore_missing_memofile=True).field_names
         dbf_fields = [f for f in dbf_fields if f != '_NullFlags']
-        dbc_map[table] = \
-            {k: v for k, v in zip(dbf_fields, tf_dict[table])}
+        dbc_map[table] = dict(zip(dbf_fields, tf_dict[table]))
         if len(tf_dict[table]) != len(dbf_fields):
             raise ValueError(
                 f"Number of DBF fields in {table} does not match what was "
@@ -646,30 +645,16 @@ def extract(ferc1_tables=pc.pudl_tables['ferc1'],
     for year in ferc1_years:
         if year not in pc.data_years["ferc1"]:
             raise ValueError(
-                f"FERC Form 1 data from the year {year} was requested but is "
-                f"not available. The years for which data is available are: "
-                f"{' '.join(str(year) for item in pc.data_years['ferc1'])}."
+                f"FERC Form 1 data from the year {year} was requested but is not available. The years for which data is available are: {' '.join(str(year) for _ in pc.data_years['ferc1'])}."
             )
         if year not in pc.working_partitions["ferc1"]["years"]:
             raise ValueError(
-                f"FERC Form 1 data from the year {year} was requested but it "
-                f"has not yet been integrated into PUDL. "
-                f"If you'd like to contribute the necessary cleaning "
-                f"functions, come find us on GitHub: "
-                f"{pudl.__downloadurl__}"
-                f"For now, the years which PUDL has integrated are: "
-                f"{' '.join(str(year) for item in pc.working_partitions['ferc1']['years'])}."
+                f"FERC Form 1 data from the year {year} was requested but it has not yet been integrated into PUDL. If you'd like to contribute the necessary cleaning functions, come find us on GitHub: {pudl.__downloadurl__}For now, the years which PUDL has integrated are: {' '.join(str(year) for _ in pc.working_partitions['ferc1']['years'])}."
             )
     for table in ferc1_tables:
         if table not in pc.pudl_tables["ferc1"]:
             raise ValueError(
-                f"FERC Form 1 table {table} was requested but it has not yet "
-                f"been integreated into PUDL. Heck, it might not even exist! "
-                f"If you'd like to contribute the necessary cleaning "
-                f"functions, come find us on GitHub: "
-                f"{pudl.__downloadurl__}"
-                f"For now, the tables which PUDL has integrated are: "
-                f"{' '.join(str(year) for item in pc.pudl_tables['ferc1'])}"
+                f"FERC Form 1 table {table} was requested but it has not yet been integreated into PUDL. Heck, it might not even exist! If you'd like to contribute the necessary cleaning functions, come find us on GitHub: {pudl.__downloadurl__}For now, the tables which PUDL has integrated are: {' '.join(str(year) for _ in pc.pudl_tables['ferc1'])}"
             )
 
     ferc1_meta = get_ferc1_meta(sa.create_engine(pudl_settings["ferc1_db"]))

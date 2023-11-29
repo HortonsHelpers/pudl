@@ -215,6 +215,6 @@ def extract(epacems_years, states, ds: Datastore):
             # others, this is yielded as a generator (and it's a one-item
             # dictionary).
             yield {
-                ("hourly_emissions_epacems_" + str(year) + "_" + state.lower()):
-                    ds.get_data_frame(partition)
+                f"hourly_emissions_epacems_{str(year)}_"
+                + state.lower(): ds.get_data_frame(partition)
             }

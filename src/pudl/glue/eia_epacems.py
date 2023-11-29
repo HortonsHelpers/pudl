@@ -40,25 +40,29 @@ def grab_n_clean_epa_orignal():
             'pudl.package_data.glue',
             'epa_eia_crosswalk_from_epa.csv')
     )
-    eia_epacems_crosswalk = (
+    return (
         pd.read_csv(eia_epacems_crosswalk_csv)
         .pipe(pudl.helpers.simplify_columns)
         # .pipe(pudl.helpers.convert_cols_dtypes, 'eia')
-        .rename(columns={
-            'oris_code': 'plant_id_epa',
-            'eia_oris': 'plant_id_eia',
-            'unit_id': 'unit_id_epa',
-            'facility_name': 'plant_name_eia'})
-        .filter([
-            'plant_name_eia',
-            'plant_id_eia',
-            'plant_id_epa',
-            'unit_id_epa',
-            'generator_id',
-            'boiler_id',
-        ])
+        .rename(
+            columns={
+                'oris_code': 'plant_id_epa',
+                'eia_oris': 'plant_id_eia',
+                'unit_id': 'unit_id_epa',
+                'facility_name': 'plant_name_eia',
+            }
+        )
+        .filter(
+            [
+                'plant_name_eia',
+                'plant_id_eia',
+                'plant_id_epa',
+                'unit_id_epa',
+                'generator_id',
+                'boiler_id',
+            ]
+        )
     )
-    return eia_epacems_crosswalk
 
 
 def split_tables(df):
