@@ -169,9 +169,7 @@ def data_sources_from_tables(table_names):
 
     """
     all_tables = get_dependent_tables_from_list(table_names)
-    table_sources = set()
-    # All tables get PUDL:
-    table_sources.add('pudl')
+    table_sources = {'pudl'}
     for t in all_tables:
         for src in pc.data_sources:
             if re.match(f".*_{src}$", t):
@@ -201,9 +199,10 @@ def get_datapkg_fks(datapkg_json):
     for tbl in metadata['resources']:
         fk_relash[tbl['name']] = []
         if 'foreignKeys' in tbl['schema']:
-            fk_tables = []
-            for fk in tbl['schema']['foreignKeys']:
-                fk_tables.append(fk['reference']['resource'])
+            fk_tables = [
+                fk['reference']['resource']
+                for fk in tbl['schema']['foreignKeys']
+            ]
             fk_relash[tbl['name']] = fk_tables
     return fk_relash
 
@@ -222,9 +221,7 @@ def get_dependent_tables(table_name, fk_relash):
 
     """
     # Add the initial table
-    dependent_tables = set()
-    dependent_tables.add(table_name)
-
+    dependent_tables = {table_name}
     # Get the list of tables this table depends on:
     new_table_names = set()
     new_table_names.update(fk_relash[table_name])
@@ -301,7 +298,7 @@ def pull_resource_from_megadata(resource_name):
         x for x in metadata_mega['resources'] if x['name'] == table_name_mega
     ]
 
-    if len(table_resource) == 0:
+    if not table_resource:
         raise ValueError(f"{resource_name} not found in stored metadata.")
     if len(table_resource) > 1:
         raise ValueError(f"{resource_name} found multiple times in metadata.")
@@ -421,7 +418,7 @@ def get_tabular_data_resource(resource_name, datapkg_dir,
     # every time we want to generate the cems table, we want it compressed
     abs_path = pathlib.Path(datapkg_dir, "data", f"{resource_name}.csv")
     if "hourly_emissions_epacems" in resource_name:
-        abs_path = pathlib.Path(abs_path.parent, abs_path.name + ".gz")
+        abs_path = pathlib.Path(abs_path.parent, f"{abs_path.name}.gz")
 
     # pull the skeleton of the descriptor from the megadata file
     descriptor = pull_resource_from_megadata(resource_name)
@@ -618,17 +615,16 @@ def generate_metadata(datapkg_settings,
         descriptor.
 
     """
-    # Create a tabular data resource for each of the input resources:
-    resources = []
     partitions = compile_partitions(datapkg_settings)
-    for resource in datapkg_resources:
-        resources.append(get_tabular_data_resource(
+    resources = [
+        get_tabular_data_resource(
             resource,
             datapkg_dir=datapkg_dir,
             datapkg_settings=datapkg_settings,
-            partitions=partitions)
+            partitions=partitions,
         )
-
+        for resource in datapkg_resources
+    ]
     datapkg_tables = get_unpartitioned_tables(
         datapkg_resources, datapkg_settings)
     data_sources = data_sources_from_tables(datapkg_tables)
@@ -647,16 +643,16 @@ def generate_metadata(datapkg_settings,
         "description": datapkg_settings["description"],
         "keywords": compile_keywords(data_sources),
         "homepage": "https://catalyst.coop/pudl/",
-        "created": (datetime.datetime.utcnow().
-                    replace(microsecond=0).isoformat() + 'Z'),
+        "created": f'{datetime.datetime.utcnow().replace(microsecond=0).isoformat()}Z',
         "contributors": [pc.contributors[c] for c in contributors],
         "sources": [pc.data_source_info[src] for src in data_sources],
         "etl-parameters-pudl": datapkg_settings["datasets"],
         "licenses": [pc.licenses["cc-by-4.0"]],
         "autoincrement": get_autoincrement_columns(datapkg_tables),
         "python-package-name": "catalystcoop.pudl",
-        "python-package-version":
-            pkg_resources.get_distribution('catalystcoop.pudl').version,
+        "python-package-version": pkg_resources.get_distribution(
+            'catalystcoop.pudl'
+        ).version,
         "resources": resources,
     }
 

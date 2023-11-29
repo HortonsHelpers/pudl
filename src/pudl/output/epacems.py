@@ -38,15 +38,13 @@ def year_state_filter(years=(), states=()):
     state_filters = [("state", "=", state.upper()) for state in states]
 
     if states and not years:
-        filters = [[tuple(x), ] for x in state_filters]
+        return [[tuple(x), ] for x in state_filters]
     elif years and not states:
-        filters = [[tuple(x), ] for x in year_filters]
-    elif years and states:
-        filters = [list(x) for x in itertools.product(year_filters, state_filters)]
+        return [[tuple(x), ] for x in year_filters]
+    elif years:
+        return [list(x) for x in itertools.product(year_filters, state_filters)]
     else:
-        filters = None
-
-    return filters
+        return None
 
 
 def get_plant_states(plant_ids, pudl_out):

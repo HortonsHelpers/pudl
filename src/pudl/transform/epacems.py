@@ -57,8 +57,7 @@ def fix_up_dates(df, plant_utc_offset):
         missing_plants = df.loc[df["utc_offset"].isna(),
                                 "plant_id_eia"].unique()
         raise ValueError(
-            f"utc_offset should never be missing for CEMS plants, but was "
-            f"missing for these: {str(list(missing_plants))}"
+            f"utc_offset should never be missing for CEMS plants, but was missing for these: {list(missing_plants)}"
         )
     # Add the offset from UTC. CEMS data don't have DST, so the offset is
     # always the same for a given plant.
@@ -147,10 +146,10 @@ def add_facility_id_unit_id_epa(df):
         # Can't just assign np.NaN and get an integer NaN, so make a new array
         # with the right shape:
         na_col = pd.array(np.full(df.shape[0], np.NaN), dtype="Int64")
-        if "facility_id" not in df.columns:
-            df["facility_id"] = na_col
-        if "unit_id_epa" not in df.columns:
-            df["unit_id_epa"] = na_col
+    if "facility_id" not in df.columns:
+        df["facility_id"] = na_col
+    if "unit_id_epa" not in df.columns:
+        df["unit_id_epa"] = na_col
     return df
 
 
@@ -173,12 +172,11 @@ def _all_na_or_values(series, values):
     """
     series_excl_na = series[series.notna()]
     if not len(series_excl_na):
-        out = True
+        return True
     elif series_excl_na.isin(values).all():
-        out = True
+        return True
     else:
-        out = False
-    return out
+        return False
 
 
 def correct_gross_load_mw(df):

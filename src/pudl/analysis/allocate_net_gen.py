@@ -215,14 +215,9 @@ def _stack_generators(pudl_out, idx_stack, cols_to_stack,
         .reset_index()
         .rename(columns={'level_3': cat_col, 0: stacked_col})
     )
-    # merge the stacked df back onto the gens table
-    # we first drop the cols_to_stack so we don't duplicate data
-    gens_stack = pd.merge(
-        gens.drop(columns=cols_to_stack),
-        gens_stack_prep,
-        how='outer'
+    return pd.merge(
+        gens.drop(columns=cols_to_stack), gens_stack_prep, how='outer'
     )
-    return gens_stack
 
 
 def associate_gen_tables(pudl_out):
@@ -309,36 +304,33 @@ def _associate_unconnected_records(eia_generators_merged):
         .reset_index()
     )
 
-    eia_generators = (
-        pd.merge(
-            eia_generators_connected,
-            eia_generators_unconnected[
-                idx_pm + ['net_generation_mwh_gf', 'fuel_consumed_mmbtu']],
-            on=idx_pm,
-            suffixes=('', '_unconnected'),
-            how='left'
-        )
-        .assign(
-            # we want the main and the unconnected net get to be added together
-            # but sometimes there is no main net get and sometimes there is no
-            # unconnected net gen
-            net_generation_mwh_gf=lambda x: np.where(
-                x.net_generation_mwh_gf.notnull()
-                | x.net_generation_mwh_gf_unconnected.notnull(),
-                x.net_generation_mwh_gf.fillna(0)
-                + x.net_generation_mwh_gf_unconnected.fillna(0),
-                np.nan
-            ),
-            fuel_consumed_mmbtu=lambda x: np.where(
-                x.fuel_consumed_mmbtu.notnull()
-                | x.fuel_consumed_mmbtu_unconnected.notnull(),
-                x.fuel_consumed_mmbtu.fillna(0)
-                + x.fuel_consumed_mmbtu_unconnected.fillna(0),
-                np.nan
-            ),
-        )
+    return pd.merge(
+        eia_generators_connected,
+        eia_generators_unconnected[
+            idx_pm + ['net_generation_mwh_gf', 'fuel_consumed_mmbtu']
+        ],
+        on=idx_pm,
+        suffixes=('', '_unconnected'),
+        how='left',
+    ).assign(
+        # we want the main and the unconnected net get to be added together
+        # but sometimes there is no main net get and sometimes there is no
+        # unconnected net gen
+        net_generation_mwh_gf=lambda x: np.where(
+            x.net_generation_mwh_gf.notnull()
+            | x.net_generation_mwh_gf_unconnected.notnull(),
+            x.net_generation_mwh_gf.fillna(0)
+            + x.net_generation_mwh_gf_unconnected.fillna(0),
+            np.nan,
+        ),
+        fuel_consumed_mmbtu=lambda x: np.where(
+            x.fuel_consumed_mmbtu.notnull()
+            | x.fuel_consumed_mmbtu_unconnected.notnull(),
+            x.fuel_consumed_mmbtu.fillna(0)
+            + x.fuel_consumed_mmbtu_unconnected.fillna(0),
+            np.nan,
+        ),
     )
-    return eia_generators
 
 
 def _associate_fuel_type_only(gens_asst, pudl_out):
@@ -401,34 +393,30 @@ def _associate_fuel_type_only_wo_matching_fuel_type(gens_asst, gf_grouped):
         how='left'
     )
 
-    gens_asst_w_unassociated = (
-        pd.merge(
-            gens_asst[
-                (gens_asst._merge != 'right_only')
-                | (gens_asst._merge.isnull())
-            ],
-            (gens_asst[gens_asst._merge == 'right_only']
-             .groupby(idx_plant)
-             [['net_generation_mwh_fuel', 'fuel_consumed_mmbtu_fuel']]
-             .sum(min_count=1)),
-            on=idx_plant,
-            how='left',
-            suffixes=('', '_unconnected')
-        )
-        .assign(
-            net_generation_mwh_gf=lambda x:
-                x.net_generation_mwh_gf.fillna(
-                    x.net_generation_mwh_fuel
-                    + x.net_generation_mwh_fuel_unconnected.fillna(0)
-                ),
-            fuel_consumed_mmbtu=lambda x:
-                x.fuel_consumed_mmbtu.fillna(
-                    x.fuel_consumed_mmbtu_fuel
-                    + x.fuel_consumed_mmbtu_fuel_unconnected.fillna(0)
-                ),
-        )
+    return pd.merge(
+        gens_asst[
+            (gens_asst._merge != 'right_only') | (gens_asst._merge.isnull())
+        ],
+        (
+            gens_asst[gens_asst._merge == 'right_only']
+            .groupby(idx_plant)[
+                ['net_generation_mwh_fuel', 'fuel_consumed_mmbtu_fuel']
+            ]
+            .sum(min_count=1)
+        ),
+        on=idx_plant,
+        how='left',
+        suffixes=('', '_unconnected'),
+    ).assign(
+        net_generation_mwh_gf=lambda x: x.net_generation_mwh_gf.fillna(
+            x.net_generation_mwh_fuel
+            + x.net_generation_mwh_fuel_unconnected.fillna(0)
+        ),
+        fuel_consumed_mmbtu=lambda x: x.fuel_consumed_mmbtu.fillna(
+            x.fuel_consumed_mmbtu_fuel
+            + x.fuel_consumed_mmbtu_fuel_unconnected.fillna(0)
+        ),
     )
-    return gens_asst_w_unassociated
 
 
 def make_allocation_ratio(gens_asst):

@@ -116,7 +116,7 @@ class DatapackageDescriptor:
         if not dp.valid:
             msg = f"Found {len(dp.errors)} datapackage validation errors:\n"
             for e in dp.errors:
-                msg = msg + f"  * {e}\n"
+                msg = f"{msg}  * {e}\n"
             raise ValueError(msg)
 
     def get_json_string(self) -> str:
@@ -192,11 +192,10 @@ class ZenodoFetcher:
             url,
             params={"access_token": self._token},
             timeout=self.timeout)
-        if response.status_code == requests.codes.ok:
-            logger.debug(f"Successfully downloaded {url}")
-            return response
-        else:
+        if response.status_code != requests.codes.ok:
             raise ValueError(f"Could not download {url}: {response.text}")
+        logger.debug(f"Successfully downloaded {url}")
+        return response
 
     def _doi_to_url(self, doi: str) -> str:
         """Returns url that holds the datapackage for given doi."""
@@ -455,9 +454,8 @@ def _get_pudl_in(args: dict) -> Path:
     """Figure out what pudl_in path should be used."""
     if args.pudl_in:
         return Path(args.pudl_in)
-    else:
-        cfg = yaml.safe_load(PUDL_YML.open())
-        return Path(cfg["pudl_in"])
+    cfg = yaml.safe_load(PUDL_YML.open())
+    return Path(cfg["pudl_in"])
 
 
 def _create_datastore(args: dict) -> Datastore:
@@ -524,11 +522,7 @@ def main():
 
     dstore = _create_datastore(args)
 
-    if args.dataset:
-        datasets = [args.dataset]
-    else:
-        datasets = dstore.get_known_datasets()
-
+    datasets = [args.dataset] if args.dataset else dstore.get_known_datasets()
     if args.partition:
         logger.info(f"Only retrieving resources for partition: {args.partition}")
 

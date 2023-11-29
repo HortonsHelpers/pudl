@@ -576,13 +576,15 @@ def _early_transform(raw_df):
     """
     logger.debug("Removing unneeded columns and dropping bad respondents.")
 
-    out_df = (
+    return (
         raw_df.filter(regex=r"^(?!.*_f$).*")
-        .drop(["report_prd", "spplmnt_num", "row_num"],
-              axis="columns", errors="ignore")
+        .drop(
+            ["report_prd", "spplmnt_num", "row_num"],
+            axis="columns",
+            errors="ignore",
+        )
         .query("respondent_id_ferc714 not in @BAD_RESPONDENTS")
     )
-    return out_df
 
 
 def transform(raw_dfs, tables=pc.pudl_tables["ferc714"]):

@@ -108,19 +108,16 @@ def derive_paths(pudl_in, pudl_out):
             read out of the YAML file. Mostly paths for inputs & outputs.
 
     """
-    # ps is short for pudl settings -- a dictionary of paths, etc.
-    ps = {}
-
     # The only "inputs" are the datastore and example settings files:
     # Convert from input string to Path and make it absolute w/ resolve()
     pudl_in = pathlib.Path(pudl_in).expanduser().resolve()
     data_dir = pudl_in / "data"
     settings_dir = pudl_in / "settings"
-    # Store these as strings... since we aren't using Paths everywhere yet:
-    ps["pudl_in"] = str(pudl_in)
-    ps["data_dir"] = str(data_dir)
-    ps["settings_dir"] = str(settings_dir)
-
+    ps = {
+        "pudl_in": str(pudl_in),
+        "data_dir": str(data_dir),
+        "settings_dir": str(settings_dir),
+    }
     # Everything else goes into outputs, generally organized by type of file:
     pudl_out = pathlib.Path(pudl_out).expanduser().resolve()
     ps["pudl_out"] = str(pudl_out)
@@ -129,7 +126,7 @@ def derive_paths(pudl_in, pudl_out):
         ps[f"{fmt}_dir"] = str(pudl_out / fmt)
 
     ferc1_db_file = pathlib.Path(ps['sqlite_dir'], 'ferc1.sqlite')
-    ps['ferc1_db'] = "sqlite:///" + str(ferc1_db_file.resolve())
+    ps['ferc1_db'] = f"sqlite:///{str(ferc1_db_file.resolve())}"
 
     ps['pudl_db'] = "sqlite:///" + str(pathlib.Path(
         ps['sqlite_dir'], 'pudl.sqlite'))

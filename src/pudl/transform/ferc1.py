@@ -599,12 +599,7 @@ def _clean_cols(df, table_name):
     if "row_number" in df.columns:
         df["record_id"] = df["record_id"] + "_" + df.row_number.astype(str)
 
-        # Check to make sure that the generated record_id is unique... since
-        # that's kind of the whole point. There are couple of genuine bad
-        # records here that are taken care of in the transform step, so just
-        # print a warning.
-        n_dupes = df.record_id.duplicated().values.sum()
-        if n_dupes:
+        if n_dupes := df.record_id.duplicated().values.sum():
             dupe_ids = df.record_id[df.record_id.duplicated()].values
             logger.warning(
                 f"{n_dupes} duplicate record_id values found "
@@ -899,8 +894,7 @@ def _plants_steam_assign_plant_ids(ferc1_steam_df, ferc1_fuel_df):
     )
     steam_rids = ferc1_steam_df.record_id.values
     pwids_rids = plants_w_ids.record_id.values
-    missing_ids = [rid for rid in steam_rids if rid not in pwids_rids]
-    if missing_ids:
+    if missing_ids := [rid for rid in steam_rids if rid not in pwids_rids]:
         raise AssertionError(
             f"Uh oh, we lost {abs(len(steam_rids)-len(pwids_rids))} FERC "
             f"steam plant record IDs: {missing_ids}"
@@ -1894,42 +1888,71 @@ def make_ferc1_clf(plants_df,
     # Make a list of all the fuel fraction columns for use as one feature.
     fuel_cols = list(plants_df.filter(regex='.*_fraction_mmbtu$').columns)
 
-    ferc1_pipe = Pipeline([
-        ('preprocessor', ColumnTransformer(
-            transformers=[
-                ('plant_name_ferc1', TfidfVectorizer(
-                    analyzer='char',
-                    ngram_range=(ngram_min, ngram_max)),
-                 'plant_name_ferc1'),
-                ('plant_type', OneHotEncoder(
-                    categories='auto'), ['plant_type']),
-                ('construction_type', OneHotEncoder(
-                    categories='auto'), ['construction_type']),
-                ('capacity_mw', MinMaxScaler(), ['capacity_mw']),
-                ('construction_year', OneHotEncoder(
-                    categories='auto'), ['construction_year']),
-                ('utility_id_ferc1', OneHotEncoder(
-                    categories='auto'), ['utility_id_ferc1']),
-                ('fuel_fraction_mmbtu', Pipeline([
-                    ('scaler', MinMaxScaler()),
-                    ('norm', Normalizer())
-                ]), fuel_cols),
-            ],
-
-            transformer_weights={
-                'plant_name_ferc1': plant_name_ferc1_wt,
-                'plant_type': plant_type_wt,
-                'construction_type': construction_type_wt,
-                'capacity_mw': capacity_mw_wt,
-                'construction_year': construction_year_wt,
-                'utility_id_ferc1': utility_id_ferc1_wt,
-                'fuel_fraction_mmbtu': fuel_fraction_wt,
-            })
-         ),
-        ('classifier', pudl.transform.ferc1.FERCPlantClassifier(
-            min_sim=min_sim, plants_df=plants_df))
-    ])
-    return ferc1_pipe
+    return Pipeline(
+        [
+            (
+                'preprocessor',
+                ColumnTransformer(
+                    transformers=[
+                        (
+                            'plant_name_ferc1',
+                            TfidfVectorizer(
+                                analyzer='char',
+                                ngram_range=(ngram_min, ngram_max),
+                            ),
+                            'plant_name_ferc1',
+                        ),
+                        (
+                            'plant_type',
+                            OneHotEncoder(categories='auto'),
+                            ['plant_type'],
+                        ),
+                        (
+                            'construction_type',
+                            OneHotEncoder(categories='auto'),
+                            ['construction_type'],
+                        ),
+                        ('capacity_mw', MinMaxScaler(), ['capacity_mw']),
+                        (
+                            'construction_year',
+                            OneHotEncoder(categories='auto'),
+                            ['construction_year'],
+                        ),
+                        (
+                            'utility_id_ferc1',
+                            OneHotEncoder(categories='auto'),
+                            ['utility_id_ferc1'],
+                        ),
+                        (
+                            'fuel_fraction_mmbtu',
+                            Pipeline(
+                                [
+                                    ('scaler', MinMaxScaler()),
+                                    ('norm', Normalizer()),
+                                ]
+                            ),
+                            fuel_cols,
+                        ),
+                    ],
+                    transformer_weights={
+                        'plant_name_ferc1': plant_name_ferc1_wt,
+                        'plant_type': plant_type_wt,
+                        'construction_type': construction_type_wt,
+                        'capacity_mw': capacity_mw_wt,
+                        'construction_year': construction_year_wt,
+                        'utility_id_ferc1': utility_id_ferc1_wt,
+                        'fuel_fraction_mmbtu': fuel_fraction_wt,
+                    },
+                ),
+            ),
+            (
+                'classifier',
+                pudl.transform.ferc1.FERCPlantClassifier(
+                    min_sim=min_sim, plants_df=plants_df
+                ),
+            ),
+        ]
+    )
 
 
 def fuel_by_plant_ferc1(fuel_df, thresh=0.5):

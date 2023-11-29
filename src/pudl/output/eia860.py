@@ -374,12 +374,11 @@ def boiler_generator_assn_eia860(pudl_engine, start_date=None, end_date=None):
         bga_eia860_select = bga_eia860_select.where(
             bga_eia860_tbl.c.report_date <= end_date
         )
-    out_df = (
+    return (
         pd.read_sql(bga_eia860_select, pudl_engine)
         .assign(report_date=lambda x: pd.to_datetime(x.report_date))
         .drop(['id'], axis='columns')
     )
-    return out_df
 
 
 def ownership_eia860(pudl_engine, start_date=None, end_date=None):

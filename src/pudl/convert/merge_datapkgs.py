@@ -88,11 +88,13 @@ def check_etl_params(dps):
     for dataset_code in dataset_codes:
         etl_params = []
         for dp in dps:
-            for dataset in dp.descriptor["etl-parameters-pudl"]:
-                if dataset_code in dataset.keys():
-                    etl_params.append(dataset[dataset_code])
+            etl_params.extend(
+                dataset[dataset_code]
+                for dataset in dp.descriptor["etl-parameters-pudl"]
+                if dataset_code in dataset.keys()
+            )
         for params in etl_params:
-            if not params == etl_params[0]:
+            if params != etl_params[0]:
                 raise ValueError(
                     f"Mismatched PUDL ETL parameters for {dataset_code}.")
 
@@ -192,8 +194,7 @@ def merge_meta(dps, datapkg_name):
     for keyword_list in [dp.descriptor["keywords"] for dp in dps]:
         for keyword in keyword_list:
             keywords.add(keyword)
-    keywords = list(keywords)
-    keywords.sort()
+    keywords = sorted(keywords)
     descriptor["keywords"] = keywords
     # Use a helper function to merge the dictionaries of autoincrement IDs:
     descriptor["autoincrement"] = pudl.helpers.merge_dicts(
@@ -213,14 +214,7 @@ def merge_meta(dps, datapkg_name):
         list_of_dicts = []
         for dp in dps:
             list_of_dicts.extend(dp.descriptor[key])
-        # Use that list to create a dictionary, keyed by the unique value for
-        # that metadata element. This effectively deduplicates the list, since
-        # latter additions to the dictionary with a given key overwrite any
-        # previous additions. This process *assumes* but does not verify that
-        # the dictionaries being added/overwritten are identical.
-        dict_of_dicts = {}
-        for d in list_of_dicts:
-            dict_of_dicts[d[keys[key]]] = d
+        dict_of_dicts = {d[keys[key]]: d for d in list_of_dicts}
         # Make a list out of the values of the resulting dict of dicts, and
         # use that list of dicts as the metadata element for the merged
         # datapackage descriptor which we return:
@@ -274,8 +268,6 @@ def merge_datapkgs(dps, out_path, clobber=False):
     # the output datapackage path as the name of the newly merged datapackage.
     descriptor = merge_meta(dps, datapkg_name=out_path.name)
 
-    # using the pkg_descriptor, validate and save the data package metadata
-    report = pudl.load.metadata.validate_save_datapkg(
-        descriptor, datapkg_dir=out_path)
-
-    return report
+    return pudl.load.metadata.validate_save_datapkg(
+        descriptor, datapkg_dir=out_path
+    )

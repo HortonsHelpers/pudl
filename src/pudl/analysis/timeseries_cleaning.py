@@ -501,19 +501,17 @@ def impute_latc_tubal(  # noqa: C901
         mat0 = np.zeros((dim[0], dim_time - max_lag))
         temp2 = _ten2mat(rho * x + t, 0)
         if lambda0 > 0:
-            if dim_time <= 5e3:
-                for m in range(dim[0]):
+            for m in range(dim[0]):
+                if dim_time <= 5e3:
                     qm = mat_hat[m, ind].T
                     a[m, :] = np.linalg.pinv(qm) @ z[m, max_lag:]
-                    mat0[m, :] = qm @ a[m, :]
-            elif dim_time > 5e3:
-                for m in range(dim[0]):
+                else:
                     idx = np.arange(0, dim_time - max_lag)
                     np.random.shuffle(idx)
                     idx = idx[: int(sample_rate * (dim_time - max_lag))]
                     qm = mat_hat[m, ind].T
                     a[m, :] = np.linalg.pinv(qm[idx[:], :]) @ z[m, max_lag:][idx[:]]
-                    mat0[m, :] = qm @ a[m, :]
+                mat0[m, :] = qm @ a[m, :]
             z[pos_missing] = np.append(
                 (temp2[:, :max_lag] / rho),
                 (temp2[:, max_lag:] + lambda0 * mat0) / (rho + lambda0), axis=1
@@ -1112,13 +1110,14 @@ class Timeseries:
 
     def summarize_flags(self) -> pd.DataFrame:
         """Summarize flagged values by flag, count and median."""
-        stats = {}
-        for col in range(self.xi.shape[1]):
-            stats[self.columns[col]] = (
+        stats = {
+            self.columns[col]: (
                 pd.Series(self.xi[:, col])
                 .groupby(self.flags[:, col])
                 .agg(['count', 'median'])
             )
+            for col in range(self.xi.shape[1])
+        }
         df = pd.concat(stats, names=['column', 'flag']).reset_index()
         # Sort flags by flagged order
         ordered = df['flag'].astype(pd.CategoricalDtype(pd.unique(self.flagged)))

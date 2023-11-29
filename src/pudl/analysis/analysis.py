@@ -116,13 +116,13 @@ def frc_by_pudl(pudl_plant_ids, pudl_engine,
     frc_df = frc_df[frc_df.plant_id_pudl.isin(pudl_plant_ids)]
     # Just keep the columns we need for output:
     cols_to_keep = ['plant_id_pudl', 'report_date']
-    cols_to_keep = cols_to_keep + cols
+    cols_to_keep += cols
     cols_to_gb = [pd.Grouper(freq='A'), 'plant_id_pudl']
 
     if fuels != 'all':
         frc_df = frc_df[frc_df.fuel.isin(fuels)]
         cols_to_keep = cols_to_keep + ['fuel', ]
-        cols_to_gb = cols_to_gb + ['fuel', ]
+        cols_to_gb += ['fuel', ]
 
     # Pare down the dataframe to make it easier to play with:
     frc_df = frc_df[cols_to_keep]
@@ -183,13 +183,13 @@ def gen_fuel_by_pudl(pudl_plant_ids, pudl_engine,
     gf_df = gf_df[gf_df.plant_id_pudl.isin(pudl_plant_ids)]
 
     cols_to_keep = ['plant_id_pudl', 'report_date']
-    cols_to_keep = cols_to_keep + cols
+    cols_to_keep += cols
     cols_to_gb = [pd.Grouper(freq='A'), 'plant_id_pudl']
 
     if fuels != 'all':
         gf_df = gf_df[gf_df.fuel.isin(fuels)]
         cols_to_keep = cols_to_keep + ['fuel', ]
-        cols_to_gb = cols_to_gb + ['fuel', ]
+        cols_to_gb += ['fuel', ]
 
     # Pare down the dataframe to make it easier to play with:
     gf_df = gf_df[cols_to_keep]

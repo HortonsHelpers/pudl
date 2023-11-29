@@ -63,7 +63,7 @@ def create_in_dtypes():
     )
     state_cats = pd.CategoricalDtype(
         categories=pc.cems_states.keys(), ordered=False)
-    in_dtypes = {
+    return {
         "state": state_cats,
         "plant_id_eia": "int32",
         "unitid": pd.StringDtype(),
@@ -82,7 +82,6 @@ def create_in_dtypes():
         "facility_id": pd.Int32Dtype(),
         "unit_id_epa": pd.Int32Dtype(),
     }
-    return in_dtypes
 
 
 def create_cems_schema():
@@ -181,11 +180,8 @@ def epacems_to_parquet(datapkg_path,
     out_dir = pudl.helpers.prep_dir(out_dir, clobber=clobber)
     data_dir = pathlib.Path(datapkg_path).parent / "data"
 
-    # Verify that all the requested data files are present:
-    epacems_years = list(epacems_years)
-    epacems_years.sort()
-    epacems_states = list(epacems_states)
-    epacems_states.sort()
+    epacems_years = sorted(epacems_years)
+    epacems_states = sorted(epacems_states)
     for year in epacems_years:
         for state in epacems_states:
             newpath = pathlib.Path(
@@ -294,8 +290,7 @@ def parse_command_line(argv):
         included but the parquet directory already exists the _build will
         fail.""",
         default=False)
-    arguments = parser.parse_args(argv[1:])
-    return arguments
+    return parser.parse_args(argv[1:])
 
 
 def main():

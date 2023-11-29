@@ -131,10 +131,13 @@ def random_chunk(li, min_chunk=1, max_chunk=3):
     """
     it = iter(li)
     while True:
-        nxt = list(itertools.islice(
-            # This is not a cryptographic application so random is fiiiine.
-            it, random.randint(min_chunk, max_chunk)))  # nosec: B311
-        if nxt:
+        if nxt := list(
+            itertools.islice(
+                # This is not a cryptographic application so random is fiiiine.
+                it,
+                random.randint(min_chunk, max_chunk),
+            )
+        ):
             yield nxt
         else:
             break
@@ -175,8 +178,8 @@ def zippertestdata(gens=50, max_group_size=6, samples=10,
 
     # Make sure we've got enough plant IDs to work with:
     rpt = 1
-    while(len(ascii_lowercase)**rpt < gens):
-        rpt = rpt + 1
+    while (len(ascii_lowercase)**rpt < gens):
+        rpt += 1
 
     # Generate the list of atomic generator IDs for both FERC (upper case) and
     # EIA (lower case) Using the same IDs across both datasets will make it
@@ -230,23 +233,16 @@ def zippertestdata(gens=50, max_group_size=6, samples=10,
     # groups. Here we're just randomly chunking the list of all generator IDs
     # into little pieces:
 
-    eia_groups = [group for group in random_chunk(gen_ids_eia,
-                                                  min_chunk=1,
-                                                  max_chunk=max_group_size)]
+    eia_groups = list(
+        random_chunk(gen_ids_eia, min_chunk=1, max_chunk=max_group_size)
+    )
 
     ferc_groups = [[gid.upper() for gid in group] for group in eia_groups]
 
-    # Then within each of these groups, we need to randomly aggregate the data
-    # series on the FERC side, to represent the non-atomic FERC plants, which
-    # are made up of more than a single generator, but which are still
-    # contained within the PUDL ID group:
-    ferc_plant_groups = []
-    for group in ferc_groups:
-        ferc_plant_groups.append([g for g in
-                                  random_chunk(group,
-                                               min_chunk=1,
-                                               max_chunk=max_group_size)])
-
+    ferc_plant_groups = [
+        list(random_chunk(group, min_chunk=1, max_chunk=max_group_size))
+        for group in ferc_groups
+    ]
     for pudl_plant_id in np.arange(0, len(ferc_plant_groups)):
         # set the pudl_plant_id on every record whose ID is in this group.
         for ferc_plant in ferc_plant_groups[pudl_plant_id]:
@@ -314,8 +310,7 @@ def aggregate_by_pudl_plant(eia_df, ferc_df):
     eia_test_df = pd.DataFrame(columns=eia_df.columns)
     eia_pudl_ids = eia_df.pudl_plant_id.unique()
     ferc_pudl_ids = ferc_df.pudl_plant_id.unique()
-    diff_ids = set(eia_pudl_ids).symmetric_difference(set(ferc_pudl_ids))
-    if diff_ids:
+    if diff_ids := set(eia_pudl_ids).symmetric_difference(set(ferc_pudl_ids)):
         raise ValueError(
             f"EIA and FERC1 PUDL ID sets are not identical."
             f"Symmetric difference: {diff_ids}"
@@ -372,9 +367,7 @@ def aggregate_by_pudl_plant(eia_df, ferc_df):
     ferc_df = ferc_df.drop('index', axis=1)
     ferc_df = ferc_df.rename(
         columns=lambda x: re.sub('(series[0-9]*$)', r'\1_ferc', x))
-    both_df = eia_test_df.merge(ferc_df, on=['pudl_plant_id', 'year'])
-
-    return both_df
+    return eia_test_df.merge(ferc_df, on=['pudl_plant_id', 'year'])
 
 
 def correlate_by_generators(agg_df, eia_cols, ferc_cols, corr_cols):
@@ -489,7 +482,7 @@ def score_all(df, corr_cols):
         # Re-organize these lists of tuples into binary mappings... ugh.
         y = []
         for x in combo_list:
-            y = y + [[z for z in zip(x[0], x[1])], ]
+            y = y + [list(zip(x[0], x[1]))]
 
         # Now we've got a dictionary with pudl plant IDs as the keys,
         # and lists of all possible candidate FERC/EIA mappings as the values.
@@ -499,9 +492,9 @@ def score_all(df, corr_cols):
     candidates_df['candidate_id'] = []
     candidates_df.drop(['test_group_id', ], axis=1, inplace=True)
 
-    for ppid in candidates:
+    for value in candidates.values():
         cid = 0
-        for c in candidates[ppid]:
+        for c in value:
             candidate = pd.DataFrame(columns=candidates_df.columns)
             for mapping in c:
                 newrow = df.loc[(df['ferc_plant_id'] == mapping[0]) &

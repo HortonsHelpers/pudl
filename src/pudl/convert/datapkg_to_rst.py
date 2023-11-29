@@ -136,8 +136,7 @@ def parse_command_line(argv):
         help="Path to the file where the RST output should be written.",
         default=False
     )
-    arguments = parser.parse_args(argv[1:])
-    return arguments
+    return parser.parse_args(argv[1:])
 
 
 def main():

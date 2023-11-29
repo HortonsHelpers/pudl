@@ -100,7 +100,7 @@ def generation_fuel_eia923(pudl_engine, freq=None,
     if freq is not None:
         # Create a date index for temporal resampling:
         gf_df = gf_df.set_index(pd.DatetimeIndex(gf_df.report_date))
-        by = by + [pd.Grouper(freq=freq)]
+        by += [pd.Grouper(freq=freq)]
 
         # Sum up these values so we can calculate quantity weighted averages
         gf_gb = gf_df.groupby(by=by)
@@ -129,23 +129,25 @@ def generation_fuel_eia923(pudl_engine, freq=None,
                   'utility_id_pudl',
                   'utility_name_eia', ]
 
-    out_df = (
+    return (
         pudl.helpers.merge_on_date_year(gf_df, pu_eia, on=['plant_id_eia'])
         # Drop any records where we've failed to get the 860 data merged in...
-        .dropna(subset=[
-            'plant_id_eia',
-            'utility_id_eia',
-        ])
+        .dropna(
+            subset=[
+                'plant_id_eia',
+                'utility_id_eia',
+            ]
+        )
         .pipe(pudl.helpers.organize_cols, first_cols)
-        .astype({
-            "plant_id_eia": "Int64",
-            "plant_id_pudl": "Int64",
-            "utility_id_eia": "Int64",
-            "utility_id_pudl": "Int64",
-        })
+        .astype(
+            {
+                "plant_id_eia": "Int64",
+                "plant_id_pudl": "Int64",
+                "utility_id_eia": "Int64",
+                "utility_id_pudl": "Int64",
+            }
+        )
     )
-
-    return out_df
 
 
 def fuel_receipts_costs_eia923(pudl_engine, freq=None,
@@ -436,7 +438,7 @@ def boiler_fuel_eia923(pudl_engine, freq=None,
         bf_df['total_ash_content'] = bf_df['fuel_consumed_units'] * \
             bf_df['ash_content_pct']
         bf_df = bf_df.set_index(pd.DatetimeIndex(bf_df.report_date))
-        by = by + [pd.Grouper(freq=freq)]
+        by += [pd.Grouper(freq=freq)]
         bf_gb = bf_df.groupby(by=by)
 
         # Sum up these totals within each group, and recalculate the per-unit
@@ -529,7 +531,7 @@ def generation_eia923(pudl_engine, freq=None,
     by = ['plant_id_eia', 'generator_id']
     if freq is not None:
         g_df = g_df.set_index(pd.DatetimeIndex(g_df.report_date))
-        by = by + [pd.Grouper(freq=freq)]
+        by += [pd.Grouper(freq=freq)]
         g_gb = g_df.groupby(by=by)
         g_df = g_gb.agg(
             {'net_generation_mwh': pudl.helpers.sum_na}).reset_index()
@@ -683,12 +685,8 @@ def get_fuel_cost_avg_eiaapi(fuel_cost_cat_ids):
         'fuel_type_code_pudl', 'units' (ref), 'series_id' (ref),
         'name' (ref).
     """
-    # grab_fuel_state_monthly compiles childseries for us to make larger
-    # requests, but we can request up to 100 series from EIA but each
-    # state-level fuel type is over 50 so we need to pull one fuel type at a
-    # time and concat the resulting df
-    dfs_to_concat = []
-    for fuel_cat_id in fuel_cost_cat_ids:
-        dfs_to_concat.append(convert_cost_json_to_df(
-            grab_fuel_state_monthly(fuel_cat_id)))
+    dfs_to_concat = [
+        convert_cost_json_to_df(grab_fuel_state_monthly(fuel_cat_id))
+        for fuel_cat_id in fuel_cost_cat_ids
+    ]
     return pd.concat(dfs_to_concat)

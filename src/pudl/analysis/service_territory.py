@@ -307,9 +307,7 @@ def _save_geoparquet(gdf, entity_type, dissolve, limit_by_state):
         for col in ("county_id_fips", "state_id_fips"):
             # pandas.NA values are not compatible with Parquet Strings yet.
             gdf[col] = gdf[col].fillna("")
-    limited = ""
-    if limit_by_state:
-        limited = "_limited"
+    limited = "_limited" if limit_by_state else ""
     # Save the geometries to a GeoParquet file
     fn = f"{entity_type}_geom{limited+dissolved}.pq"
     gdf.to_parquet(fn, index=False)
